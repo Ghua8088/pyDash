@@ -27,22 +27,20 @@ A modern, matte-black system monitor and task manager built with Pytron (Python 
 
 1.  **Build the Frontend**
     ```bash
-    cd frontend
-    npm run build
+    pytron build-frontend
     ```
     This will generate the static files in `../build/frontend`.
 
 2.  **Run the Python App**
     Go back to the root folder and run:
     ```bash
-    python app.py
+    pytron run
     ```
 
 ## Development
 
-For development, you can run the frontend in dev mode:
+For development, you can run the app in dev mode:
 ```bash
-cd frontend
-npm run dev
+pytron run --dev
 ```
 And update `app.py` to load from the dev server URL if needed (Pytron supports loading from URL in debug mode usually, or you can just rebuild).
