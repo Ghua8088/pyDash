@@ -5,8 +5,4 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: './', // Important for relative paths in built assets
-  build: {
-    outDir: '../build/frontend', // Output to a folder that Python can serve or Pywebview can load
-    emptyOutDir: true,
-  }
 })

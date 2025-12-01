@@ -1,4 +1,9 @@
 /frontend/node_modules/
+/frontend/dist/
 /build/
 .env
 *.log
+/dist/
+*.exe
+*.spec
+

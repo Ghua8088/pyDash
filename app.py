@@ -1,3 +1,5 @@
+import os
+import sys
 import psutil
 import time
 import threading
@@ -5,16 +7,61 @@ import shutil
 import subprocess
 from pytron import App
 
+
+def _check_output_hidden(cmd):
+    """Run a command and return output while preventing a console window on Windows.
+
+    Uses subprocess.CREATE_NO_WINDOW when available, otherwise falls back to
+    STARTUPINFO flags to hide the window. Keeps output encoding consistent.
+    """
+    kwargs = {'encoding': 'utf-8', 'stderr': subprocess.STDOUT}
+    if os.name == 'nt':
+        create_no_window = getattr(subprocess, 'CREATE_NO_WINDOW', None)
+        if create_no_window is not None:
+            kwargs['creationflags'] = create_no_window
+        else:
+            si = subprocess.STARTUPINFO()
+            si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            si.wShowWindow = subprocess.SW_HIDE
+            kwargs['startupinfo'] = si
+    return subprocess.check_output(cmd, **kwargs)
+
 def main():
+    # Ensure the app serves the correct frontend files when run
+    # - When packaged by PyInstaller, assets are extracted to sys._MEIPASS
+    # - In development, prefer build/frontend then frontend
+    base_candidates = []
+    if getattr(sys, 'frozen', False):
+        base_candidates.extend([
+            os.path.join(sys._MEIPASS, 'frontend'),
+            sys._MEIPASS,
+        ])
+    else:
+        here = os.path.dirname(__file__)
+        base_candidates.extend([
+            os.path.join(here, 'build', 'frontend'),
+            os.path.join(here, 'frontend'),
+            os.path.join(here, 'build'),
+        ])
+
+    static_dir = None
+    for c in base_candidates:
+        try:
+            if c and os.path.isdir(c) and os.path.exists(os.path.join(c, 'index.html')):
+                static_dir = c
+                break
+        except Exception:
+            continue
+
+    if static_dir:
+        try:
+            os.chdir(static_dir)
+        except Exception:
+            pass
+
     app = App()
     # Create a frameless window for a custom UI look
-    window = app.create_window(
-        title="Pytron Task Manager",
-        width=1000,
-        height=700,
-        frameless=True,
-        resizable=True
-    )
+    window = app.create_window()
 
     # --- Backend Logic ---
 
@@ -34,17 +81,15 @@ def main():
         if shutil.which('nvidia-smi'):
             try:
                 # Get Name
-                name_output = subprocess.check_output(
-                    ['nvidia-smi', '--query-gpu=name', '--format=csv,noheader'],
-                    encoding='utf-8'
-                )
+                name_output = _check_output_hidden([
+                    'nvidia-smi', '--query-gpu=name', '--format=csv,noheader'
+                ])
                 gpu_name = name_output.strip().split('\n')[0]
 
                 # Get Stats
-                stats_output = subprocess.check_output(
-                    ['nvidia-smi', '--query-gpu=utilization.gpu,memory.total,memory.used', '--format=csv,noheader,nounits'],
-                    encoding='utf-8'
-                )
+                stats_output = _check_output_hidden([
+                    'nvidia-smi', '--query-gpu=utilization.gpu,memory.total,memory.used', '--format=csv,noheader,nounits'
+                ])
                 # Example output: 14, 4096, 500
                 line = stats_output.strip().split('\n')[0]
                 vals = [float(x) for x in line.split(',')]
@@ -94,10 +139,9 @@ def main():
         if shutil.which('nvidia-smi'):
             try:
                 # Get GPU memory usage per process
-                output = subprocess.check_output(
-                    ['nvidia-smi', '--query-compute-apps=pid,used_memory', '--format=csv,noheader,nounits'],
-                    encoding='utf-8'
-                )
+                output = _check_output_hidden([
+                    'nvidia-smi', '--query-compute-apps=pid,used_memory', '--format=csv,noheader,nounits'
+                ])
                 for line in output.strip().split('\n'):
                     if line:
                         parts = line.split(',')
@@ -185,7 +229,7 @@ def main():
     # But let's demonstrate the event system if we want real-time push.
     # For now, let's stick to polling from frontend for simplicity and control.
 
-    app.run(debug=False)
+    app.run()
 
 if __name__ == '__main__':
     main()

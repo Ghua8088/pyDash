@@ -1,8 +1,9 @@
 {
-    "title": "Pytron Task Manager",
+    "title": "PyDash",
     "url": "build/frontend/index.html",
     "width": 1000,
     "height": 700,
-    "frameless": true,
-    "resizable": true
+    "frameless": false,
+    "resizable": true,
+    "icon":"PyDash.png"
 }
